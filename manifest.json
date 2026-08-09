@@ -1,0 +1,10 @@
+{
+  "id": "daily-task-mover",
+  "name": "Daily Task Mover",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "Move the task to the same heading on the previous or next day.",
+  "author": "moz",
+  "authorUrl": "https://github.com/moziar",
+  "isDesktopOnly": true
+}

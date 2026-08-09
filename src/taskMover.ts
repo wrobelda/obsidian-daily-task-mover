@@ -1,0 +1,143 @@
+import { App, Notice, TFile } from "obsidian";
+
+interface MoveOpts {
+  app: App;
+  sourceFile: TFile;
+  blockRange: { startLine: number; endLine: number };
+  sourceHeading: { level: number; text: string } | null;
+  targetFile: TFile;
+}
+
+/** 追加文本到目标末尾，确保前面有空行分隔。 */
+function appendToEnd(data: string, blockText: string): string {
+  if (data.length === 0) {
+    return blockText + "\n";
+  }
+  let result = data;
+  if (!result.endsWith("\n")) result += "\n";
+  if (!result.endsWith("\n\n")) result += "\n";
+  result += blockText + "\n";
+  return result;
+}
+
+/** 在目标末尾追加新标题 + 任务块。 */
+function appendNewHeading(
+  data: string,
+  heading: { level: number; text: string },
+  blockText: string
+): string {
+  const hashes = "#".repeat(heading.level);
+  const headingLine = `${hashes} ${heading.text}`;
+  if (data.length === 0) {
+    return `${headingLine}\n\n${blockText}\n`;
+  }
+  let result = data;
+  if (!result.endsWith("\n")) result += "\n";
+  if (!result.endsWith("\n\n")) result += "\n";
+  result += `${headingLine}\n\n${blockText}\n`;
+  return result;
+}
+
+/**
+ * 将光标所在任务块从源笔记移动到目标笔记。
+ * 冲突/错误通过 Notice 提示，不向上抛出。
+ */
+export async function moveTaskToNote(opts: MoveOpts): Promise<void> {
+  const { app, sourceFile, blockRange, sourceHeading, targetFile } = opts;
+  try {
+    // 统一从 vault 读取源文件内容，避免编辑器/vault 不同步
+    const sourceContent = await app.vault.read(sourceFile);
+    const sourceLines = sourceContent.split("\n");
+    // 提取块文本（含全部子项）
+    const blockText = sourceLines
+      .slice(blockRange.startLine, blockRange.endLine + 1)
+      .join("\n");
+    const firstLine = blockText.split("\n")[0] ?? "";
+
+    const targetContent = await app.vault.read(targetFile);
+    const targetLines = targetContent.split("\n");
+
+    // ---- 冲突检测（修改前）----
+    if (sourceHeading) {
+      const targetCache = app.metadataCache.getFileCache(targetFile);
+      const matches = (targetCache?.headings ?? []).filter(
+        (h) => h.level === sourceHeading.level && h.heading === sourceHeading.text
+      );
+      if (matches.length > 1) {
+        const hashes = "#".repeat(sourceHeading.level);
+        throw new Error(
+          `目标笔记中存在多个『${hashes} ${sourceHeading.text}』标题，请手动处理`
+        );
+      }
+    }
+    if (firstLine.length > 0 && targetLines.includes(firstLine)) {
+      throw new Error("目标笔记已包含该任务");
+    }
+
+    // ---- 计算目标标题段范围（基于 metadataCache）----
+    let targetHeadingLine: number | null = null;
+    let sectionEndLine = Number.MAX_SAFE_INTEGER;
+    if (sourceHeading) {
+      const targetCache = app.metadataCache.getFileCache(targetFile);
+      const headings = targetCache?.headings ?? [];
+      const match = headings.find(
+        (h) => h.level === sourceHeading.level && h.heading === sourceHeading.text
+      );
+      if (match) {
+        targetHeadingLine = match.position.start.line;
+        for (const h of headings) {
+          if (
+            h.position.start.line > targetHeadingLine &&
+            h.level <= sourceHeading.level
+          ) {
+            sectionEndLine = h.position.start.line - 1;
+            break;
+          }
+        }
+      }
+    }
+
+    // ---- 插入到目标笔记（原子操作）----
+    await app.vault.process(targetFile, (data: string) => {
+      const lines = data.split("\n");
+
+      if (sourceHeading === null) {
+        return appendToEnd(data, blockText);
+      }
+
+      if (targetHeadingLine !== null && targetHeadingLine < lines.length) {
+        const upper = Math.min(sectionEndLine, lines.length - 1);
+        let lastNonEmpty = targetHeadingLine;
+        for (let i = targetHeadingLine; i <= upper; i++) {
+          if (lines[i].trim().length > 0) {
+            lastNonEmpty = i;
+          }
+        }
+        lines.splice(lastNonEmpty + 1, 0, ...blockText.split("\n"));
+        return lines.join("\n");
+      }
+
+      // 目标无该标题 → 末尾新建标题 + 任务
+      return appendNewHeading(data, sourceHeading, blockText);
+    });
+
+    // ---- 从源笔记删除任务块（原子操作）----
+    await app.vault.process(sourceFile, (data: string) => {
+      const lines = data.split("\n");
+      const before = lines.slice(0, blockRange.startLine);
+      const after = lines.slice(blockRange.endLine + 1);
+      let result = before.concat(after).join("\n");
+      // 合并 3+ 连续换行为 2（避免空行堆叠）
+      result = result.replace(/\n{3,}/g, "\n\n");
+      if (result.length > 0 && !result.endsWith("\n")) {
+        result += "\n";
+      }
+      return result;
+    });
+
+    new Notice(`已移动到 ${targetFile.basename}`);
+  } catch (err) {
+    const e = err as { message?: string };
+    new Notice(String(e?.message ?? err));
+  }
+}
