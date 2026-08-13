@@ -95,7 +95,7 @@ export default class DailyTaskMoverPlugin extends Plugin {
     this.settings = Object.assign(
       {},
       DEFAULT_SETTINGS,
-      await this.loadData()
+      (await this.loadData()) as Partial<DailyTaskMoverSettings>
     );
   }
 
@@ -272,7 +272,7 @@ export default class DailyTaskMoverPlugin extends Plugin {
       const taskLine = taskItem.position.start.line;
       if (taskEl.querySelector(":scope > .dtm-task-icon")) continue;
 
-      const icon = document.createElement("span");
+      const icon = createSpan();
       icon.className = "dtm-task-icon";
       icon.setAttribute("aria-hidden", "true");
       icon.setAttribute("title", t("title.moveTask"));
