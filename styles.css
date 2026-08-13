@@ -1,1 +1,34 @@
-/* Daily Task Mover 样式（暂无） */
+/* Daily Task Mover 行内 hover 图标 */
+
+.dtm-task-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  opacity: 0;
+  cursor: pointer;
+  color: var(--text-muted);
+  vertical-align: middle;
+  flex-shrink: 0;
+  transition:
+    opacity 0.1s ease,
+    color 0.1s ease;
+}
+
+.dtm-task-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* 编辑模式：hover 行显示图标 */
+.cm-line:hover .dtm-task-icon,
+/* 阅读模式：hover 任务项显示图标 */
+li.task-list-item:hover > .dtm-task-icon {
+  opacity: 1;
+}
+
+.dtm-task-icon:hover {
+  color: var(--text-accent);
+}

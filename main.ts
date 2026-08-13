@@ -1,4 +1,13 @@
-import { MarkdownView, Menu, Notice, Plugin } from "obsidian";
+import {
+  MarkdownView,
+  MarkdownPostProcessorContext,
+  Menu,
+  Notice,
+  Platform,
+  Plugin,
+  TFile,
+  setIcon,
+} from "obsidian";
 import {
   DailyTaskMoverSettings,
   DEFAULT_SETTINGS,
@@ -11,6 +20,7 @@ import {
 } from "./src/taskCache";
 import { getCurrentDailyDate, getOrCreateDailyNote } from "./src/dailyNoteUtils";
 import { moveTaskToNote } from "./src/taskMover";
+import { buildTaskIconField } from "./src/taskLineIcon";
 
 export default class DailyTaskMoverPlugin extends Plugin {
   declare settings: DailyTaskMoverSettings;
@@ -31,10 +41,11 @@ export default class DailyTaskMoverPlugin extends Plugin {
         if (!date) return;
         const cache = this.app.metadataCache.getFileCache(view.file);
         if (!cache) return;
-        const taskItem = getTaskAtLine(cache, view.editor.getCursor().line);
+        const line = view.editor.getCursor().line;
+        const taskItem = getTaskAtLine(cache, line);
         if (!taskItem) return;
         if (checking) return true;
-        void this.doMove("prev");
+        void this.doMove("prev", view.file, line);
       },
     });
 
@@ -49,63 +60,32 @@ export default class DailyTaskMoverPlugin extends Plugin {
         if (!date) return;
         const cache = this.app.metadataCache.getFileCache(view.file);
         if (!cache) return;
-        const taskItem = getTaskAtLine(cache, view.editor.getCursor().line);
+        const line = view.editor.getCursor().line;
+        const taskItem = getTaskAtLine(cache, line);
         if (!taskItem) return;
         if (checking) return true;
-        void this.doMove("next");
+        void this.doMove("next", view.file, line);
       },
     });
 
-    this.registerEvent(
-      this.app.workspace.on("editor-menu", (menu, editor, info) => {
-        const file = info.file;
-        if (!file) return;
-        const date = getCurrentDailyDate(file);
-        if (!date) return;
-        const cache = this.app.metadataCache.getFileCache(file);
-        if (!cache) return;
-        const taskItem = getTaskAtLine(cache, editor.getCursor().line);
-        if (!taskItem) return;
-        if (!this.settings.enablePreviousDay && !this.settings.enableNextDay)
-          return;
+    // 桌面端：编辑模式 + 阅读模式行内 hover 图标
+    // 移动端无 hover，不注册图标（命令仍可通过命令面板触发）
+    if (!Platform.isMobile) {
+      this.registerEditorExtension(
+        buildTaskIconField(
+          (line, evt) => this.handleIconClick(line, evt),
+          () => this.isDailyNoteActive()
+        )
+      );
 
-        const addAction = (m: Menu) => {
-          if (this.settings.enablePreviousDay) {
-            m.addItem((item) => {
-              item.setTitle("移动到前一天");
-              item.setIcon("arrow-left");
-              item.onClick(() => {
-                void this.doMove("prev");
-              });
-            });
-          }
-          if (this.settings.enableNextDay) {
-            m.addItem((item) => {
-              item.setTitle("移动到后一天");
-              item.setIcon("arrow-right");
-              item.onClick(() => {
-                void this.doMove("next");
-              });
-            });
-          }
-        };
-
-        if (this.settings.collapseToSubmenu) {
-          menu.addItem((item) => {
-            item.setTitle("daily task mover");
-            item.setIcon("calendar-clock");
-            const sub = (item as unknown as { setSubmenu(): Menu }).setSubmenu();
-            addAction(sub);
-          });
-        } else {
-          addAction(menu);
-        }
-      })
-    );
+      this.registerMarkdownPostProcessor((el, ctx) => {
+        this.processReadingModeTasks(el, ctx);
+      });
+    }
   }
 
   onunload(): void {
-    // 所有事件通过 registerEvent 自动清理
+    // 所有事件通过 registerEvent / registerEditorExtension / registerMarkdownPostProcessor 自动清理
   }
 
   async loadSettings(): Promise<void> {
@@ -120,13 +100,55 @@ export default class DailyTaskMoverPlugin extends Plugin {
     await this.saveData(this.settings);
   }
 
-  private async doMove(direction: "prev" | "next"): Promise<void> {
-    try {
-      const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-      if (!view || !view.file) return;
-      const editor = view.editor;
-      const file = view.file;
+  /** 当前 active MarkdownView 的文件是否为日记笔记。 */
+  private isDailyNoteActive(): boolean {
+    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+    return !!view?.file && !!getCurrentDailyDate(view.file);
+  }
 
+  /** 编辑模式图标点击：校验日记后弹菜单。 */
+  private handleIconClick(line: number, evt: MouseEvent): void {
+    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+    if (!view?.file) return;
+    if (!getCurrentDailyDate(view.file)) return;
+    this.openTaskMenu(view.file, line, evt);
+  }
+
+  /** 弹出前一天/后一天菜单。 */
+  private openTaskMenu(file: TFile, taskLine: number, evt: MouseEvent): void {
+    if (!this.settings.enablePreviousDay && !this.settings.enableNextDay) return;
+    const menu = new Menu();
+    if (this.settings.enablePreviousDay) {
+      menu.addItem((item) => {
+        item.setTitle("移动到前一天");
+        item.setIcon("arrow-left");
+        item.onClick(() => {
+          void this.doMove("prev", file, taskLine);
+        });
+      });
+    }
+    if (this.settings.enableNextDay) {
+      menu.addItem((item) => {
+        item.setTitle("移动到后一天");
+        item.setIcon("arrow-right");
+        item.onClick(() => {
+          void this.doMove("next", file, taskLine);
+        });
+      });
+    }
+    menu.showAtMouseEvent(evt);
+  }
+
+  /**
+   * 移动指定行的任务块到前一天/后一天日记。
+   * 不依赖 editor 光标，由调用方传入 file + taskLine（编辑模式图标 / 阅读模式图标 / 命令均走此入口）。
+   */
+  private async doMove(
+    direction: "prev" | "next",
+    file: TFile,
+    taskLine: number
+  ): Promise<void> {
+    try {
       const date = getCurrentDailyDate(file);
       if (!date) {
         new Notice("当前笔记不是日记笔记");
@@ -135,8 +157,13 @@ export default class DailyTaskMoverPlugin extends Plugin {
 
       const cache = this.app.metadataCache.getFileCache(file);
       if (!cache) return;
-      const taskItem = getTaskAtLine(cache, editor.getCursor().line);
+      const taskItem = getTaskAtLine(cache, taskLine);
       if (!taskItem) return;
+      // 兜底：子 task 不允许单独移动（图标层已过滤，命令入口在此拦截）
+      if (taskItem.parent >= 0) {
+        new Notice("子任务不可单独移动，请移动顶层任务");
+        return;
+      }
 
       const blockRange = getTaskBlockRange(cache, taskItem);
       const sourceHeading = deriveSourceHeading(
@@ -161,6 +188,67 @@ export default class DailyTaskMoverPlugin extends Plugin {
     } catch (err) {
       const e = err as { message?: string };
       new Notice(String(e?.message ?? err));
+    }
+  }
+
+  /**
+   * 阅读模式：为渲染后的 li.task-list-item 注入行内图标。
+   * 用 ctx.getSectionInfo(el) 拿到当前渲染块的源码行范围，
+   * 在该范围内按源码顺序取 task，与 DOM 顺序一一对应（嵌套列表也成立）。
+   */
+  private processReadingModeTasks(
+    el: HTMLElement,
+    ctx: MarkdownPostProcessorContext
+  ): void {
+    const tfile = this.app.vault.getAbstractFileByPath(ctx.sourcePath);
+    if (!(tfile instanceof TFile)) return;
+    if (!getCurrentDailyDate(tfile)) return;
+
+    const cache = this.app.metadataCache.getFileCache(tfile);
+    if (!cache?.listItems) return;
+
+    const info = ctx.getSectionInfo(el);
+    if (!info) return;
+    const sectionStart = info.lineStart;
+    const sectionEnd = info.lineEnd;
+
+    const sectionTasks = cache.listItems.filter(
+      (i) =>
+        i.task !== undefined &&
+        i.position.start.line >= sectionStart &&
+        i.position.start.line <= sectionEnd
+    );
+    if (sectionTasks.length === 0) return;
+
+    const taskEls = el.findAll("li.task-list-item");
+    if (taskEls.length === 0) return;
+
+    const count = Math.min(taskEls.length, sectionTasks.length);
+    for (let i = 0; i < count; i++) {
+      const taskEl = taskEls[i];
+      const taskItem = sectionTasks[i];
+      // 仅顶层 task 显示图标（parent < 0 表示无父列表项）
+      if (taskItem.parent >= 0) continue;
+      const taskLine = taskItem.position.start.line;
+      if (taskEl.querySelector(":scope > .dtm-task-icon")) continue;
+
+      const icon = document.createElement("span");
+      icon.className = "dtm-task-icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.setAttribute("title", "移动任务");
+      setIcon(icon, "arrow-left-right");
+      icon.addEventListener("click", (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.openTaskMenu(tfile, taskLine, e);
+      });
+      // 行尾插入：嵌套 task 时插到子 ul 之前（task 文本末尾），否则 append 到 li 末尾
+      const nestedUl = taskEl.querySelector(":scope > ul, :scope > ol");
+      if (nestedUl) {
+        nestedUl.before(icon);
+      } else {
+        taskEl.append(icon);
+      }
     }
   }
 }
