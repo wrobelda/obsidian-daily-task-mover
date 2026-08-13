@@ -1,12 +1,13 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
 import type DailyTaskMoverPlugin from "../main";
 import type { ClickAction } from "./settings";
+import { t } from "./i18n";
 
 const CLICK_ACTION_LABELS: Record<ClickAction, string> = {
-  popup: "弹出菜单",
-  prev: "移动到前一天",
-  next: "移动到后一天",
-  none: "无动作",
+  popup: t("clickAction.popup"),
+  prev: t("clickAction.prev"),
+  next: t("clickAction.next"),
+  none: t("clickAction.none"),
 };
 
 export class DailyTaskMoverSettingTab extends PluginSettingTab {
@@ -22,8 +23,8 @@ export class DailyTaskMoverSettingTab extends PluginSettingTab {
     containerEl.empty();
 
     new Setting(containerEl)
-      .setName("左键点击动作")
-      .setDesc("左键点击 task 行尾图标时执行的动作。")
+      .setName(t("settings.leftClickAction"))
+      .setDesc(t("settings.leftClickActionDesc"))
       .addDropdown((dd) => {
         for (const key of Object.keys(CLICK_ACTION_LABELS) as ClickAction[]) {
           dd.addOption(key, CLICK_ACTION_LABELS[key]);
@@ -38,8 +39,8 @@ export class DailyTaskMoverSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("右键点击动作")
-      .setDesc("右键点击 task 行尾图标时执行的动作。")
+      .setName(t("settings.rightClickAction"))
+      .setDesc(t("settings.rightClickActionDesc"))
       .addDropdown((dd) => {
         for (const key of Object.keys(CLICK_ACTION_LABELS) as ClickAction[]) {
           dd.addOption(key, CLICK_ACTION_LABELS[key]);
@@ -59,10 +60,8 @@ export class DailyTaskMoverSettingTab extends PluginSettingTab {
       this.plugin.settings.rightClickAction === "popup";
 
     new Setting(containerEl)
-      .setName("启用前一天")
-      .setDesc(
-        "在弹出菜单中显示“移动到前一天”选项。仅当左键或右键点击动作为“弹出菜单”时可修改。"
-      )
+      .setName(t("settings.enablePreviousDay"))
+      .setDesc(t("settings.enablePreviousDayDesc"))
       .addToggle((toggle) => {
         toggle
           .setValue(this.plugin.settings.enablePreviousDay)
@@ -74,10 +73,8 @@ export class DailyTaskMoverSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("启用后一天")
-      .setDesc(
-        "在弹出菜单中显示“移动到后一天”选项。仅当左键或右键点击动作为“弹出菜单”时可修改。"
-      )
+      .setName(t("settings.enableNextDay"))
+      .setDesc(t("settings.enableNextDayDesc"))
       .addToggle((toggle) => {
         toggle
           .setValue(this.plugin.settings.enableNextDay)

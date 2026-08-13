@@ -22,6 +22,7 @@ import {
 import { getCurrentDailyDate, getOrCreateDailyNote } from "./src/dailyNoteUtils";
 import { moveTaskToNote } from "./src/taskMover";
 import { buildTaskIconField } from "./src/taskLineIcon";
+import { t } from "./src/i18n";
 
 export default class DailyTaskMoverPlugin extends Plugin {
   declare settings: DailyTaskMoverSettings;
@@ -33,7 +34,7 @@ export default class DailyTaskMoverPlugin extends Plugin {
 
     this.addCommand({
       id: "move-to-previous-day",
-      name: "移动任务到前一天",
+      name: t("command.moveToPreviousDay"),
       checkCallback: (checking: boolean) => {
         if (!this.settings.enablePreviousDay) return;
         const view = this.app.workspace.getActiveViewOfType(MarkdownView);
@@ -52,7 +53,7 @@ export default class DailyTaskMoverPlugin extends Plugin {
 
     this.addCommand({
       id: "move-to-next-day",
-      name: "移动任务到后一天",
+      name: t("command.moveToNextDay"),
       checkCallback: (checking: boolean) => {
         if (!this.settings.enableNextDay) return;
         const view = this.app.workspace.getActiveViewOfType(MarkdownView);
@@ -157,7 +158,7 @@ export default class DailyTaskMoverPlugin extends Plugin {
     const menu = new Menu();
     if (showPrev) {
       menu.addItem((item) => {
-        item.setTitle("移动到前一天");
+        item.setTitle(t("menu.moveToPreviousDay"));
         item.setIcon("arrow-left");
         item.onClick(() => {
           void this.doMove("prev", file, taskLine);
@@ -166,7 +167,7 @@ export default class DailyTaskMoverPlugin extends Plugin {
     }
     if (showNext) {
       menu.addItem((item) => {
-        item.setTitle("移动到后一天");
+        item.setTitle(t("menu.moveToNextDay"));
         item.setIcon("arrow-right");
         item.onClick(() => {
           void this.doMove("next", file, taskLine);
@@ -188,7 +189,7 @@ export default class DailyTaskMoverPlugin extends Plugin {
     try {
       const date = getCurrentDailyDate(file);
       if (!date) {
-        new Notice("当前笔记不是日记笔记");
+        new Notice(t("notice.notDailyNote"));
         return;
       }
 
@@ -198,7 +199,7 @@ export default class DailyTaskMoverPlugin extends Plugin {
       if (!taskItem) return;
       // 兜底：子 task 不允许单独移动（图标层已过滤，命令入口在此拦截）
       if (taskItem.parent >= 0) {
-        new Notice("子任务不可单独移动，请移动顶层任务");
+        new Notice(t("notice.subtaskNotMovable"));
         return;
       }
 
@@ -273,7 +274,7 @@ export default class DailyTaskMoverPlugin extends Plugin {
       const icon = document.createElement("span");
       icon.className = "dtm-task-icon";
       icon.setAttribute("aria-hidden", "true");
-      icon.setAttribute("title", "移动任务");
+      icon.setAttribute("title", t("title.moveTask"));
       setIcon(icon, "arrow-left-right");
       icon.addEventListener("click", (e: MouseEvent) => {
         e.preventDefault();

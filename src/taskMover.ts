@@ -1,4 +1,5 @@
 import { App, Notice, TFile } from "obsidian";
+import { t } from "./i18n";
 
 interface MoveOpts {
   app: App;
@@ -66,12 +67,14 @@ export async function moveTaskToNote(opts: MoveOpts): Promise<void> {
       if (matches.length > 1) {
         const hashes = "#".repeat(sourceHeading.level);
         throw new Error(
-          `目标笔记中存在多个『${hashes} ${sourceHeading.text}』标题，请手动处理`
+          t("error.multipleHeadings", {
+            heading: `${hashes} ${sourceHeading.text}`,
+          })
         );
       }
     }
     if (firstLine.length > 0 && targetLines.includes(firstLine)) {
-      throw new Error("目标笔记已包含该任务");
+      throw new Error(t("error.duplicateTask"));
     }
 
     // ---- 计算目标标题段范围（基于 metadataCache）----
@@ -135,7 +138,7 @@ export async function moveTaskToNote(opts: MoveOpts): Promise<void> {
       return result;
     });
 
-    new Notice(`已移动到 ${targetFile.basename}`);
+    new Notice(t("notice.movedTo", { name: targetFile.basename }));
   } catch (err) {
     const e = err as { message?: string };
     new Notice(String(e?.message ?? err));

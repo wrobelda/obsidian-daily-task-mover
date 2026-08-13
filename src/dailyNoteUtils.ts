@@ -5,6 +5,7 @@ import {
   getDateFromFile,
   getDailyNoteSettings,
 } from "obsidian-daily-notes-interface";
+import { t } from "./i18n";
 
 /**
  * 从 daily notes 配置中获取 format，默认 YYYY-MM-DD。
@@ -102,8 +103,8 @@ export async function getOrCreateDailyNote(
 
   const created = await createDailyNote(date);
   if (!created) {
-    new Notice("创建日记笔记失败");
-    throw new Error("创建日记笔记失败");
+    new Notice(t("notice.failedCreateDailyNote"));
+    throw new Error(t("notice.failedCreateDailyNote"));
   }
   return created;
 }

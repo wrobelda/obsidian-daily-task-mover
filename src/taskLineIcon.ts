@@ -6,6 +6,7 @@ import {
   DecorationSet,
 } from "@codemirror/view";
 import { setIcon } from "obsidian";
+import { t } from "./i18n";
 
 /**
  * 匹配 task 行：`- [ ]` / `- [x]` / `* [X]` 等，捕获前导缩进。
@@ -34,7 +35,7 @@ class TaskIconWidget extends WidgetType {
     const span = document.createElement("span");
     span.className = "dtm-task-icon";
     span.setAttribute("aria-hidden", "true");
-    span.setAttribute("title", "移动任务");
+    span.setAttribute("title", t("title.moveTask"));
     setIcon(span, "arrow-left-right");
     span.addEventListener("click", (e: MouseEvent) => {
       e.preventDefault();
