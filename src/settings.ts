@@ -1,6 +1,9 @@
 /** 左键/右键点击行内图标时执行的动作。 */
 export type ClickAction = "popup" | "prev" | "next" | "none";
 
+/** 界面语言选择：auto 跟随 Obsidian 界面语言，en/zh-cn 手动指定。 */
+export type Language = "auto" | "en" | "zh-cn";
+
 export interface DailyTaskMoverSettings {
   enablePreviousDay: boolean;
   enableNextDay: boolean;
@@ -8,6 +11,8 @@ export interface DailyTaskMoverSettings {
   leftClickAction: ClickAction;
   /** 右键点击行内图标动作。 */
   rightClickAction: ClickAction;
+  /** 手动选择的界面语言。 */
+  language: Language;
 }
 
 export const DEFAULT_SETTINGS: DailyTaskMoverSettings = {
@@ -15,4 +20,5 @@ export const DEFAULT_SETTINGS: DailyTaskMoverSettings = {
   enableNextDay: true,
   leftClickAction: "popup",
   rightClickAction: "none",
+  language: "auto",
 };

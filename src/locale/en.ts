@@ -12,6 +12,12 @@ const en = {
     "Multiple '{heading}' headings found in the target note; please handle manually",
   "error.duplicateTask": "The target note already contains this task",
   "title.moveTask": "Move task",
+  "settings.language": "Language",
+  "settings.languageDesc":
+    "Manually select the interface language. When set to 'Auto', follows the Obsidian interface language.",
+  "language.auto": "Auto",
+  "language.en": "English",
+  "language.zh-cn": "Chinese (Simplified)",
   "settings.leftClickAction": "Left click action",
   "settings.leftClickActionDesc":
     "Action performed when left-clicking the task icon at the end of a line.",

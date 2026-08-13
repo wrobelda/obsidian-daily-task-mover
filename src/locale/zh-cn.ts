@@ -11,6 +11,12 @@ const zhCN = {
     "目标笔记中存在多个『{heading}』标题，请手动处理",
   "error.duplicateTask": "目标笔记已包含该任务",
   "title.moveTask": "移动任务",
+  "settings.language": "语言",
+  "settings.languageDesc":
+    "手动选择界面语言。选择“自动”时跟随 Obsidian 界面语言。",
+  "language.auto": "自动",
+  "language.en": "英文",
+  "language.zh-cn": "简体中文",
   "settings.leftClickAction": "左键点击动作",
   "settings.leftClickActionDesc":
     "左键点击 task 行尾图标时执行的动作。",

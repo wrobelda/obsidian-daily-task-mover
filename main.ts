@@ -22,13 +22,14 @@ import {
 import { getCurrentDailyDate, getOrCreateDailyNote } from "./src/dailyNoteUtils";
 import { moveTaskToNote } from "./src/taskMover";
 import { buildTaskIconField } from "./src/taskLineIcon";
-import { t } from "./src/i18n";
+import { t, setLanguage } from "./src/i18n";
 
 export default class DailyTaskMoverPlugin extends Plugin {
   declare settings: DailyTaskMoverSettings;
 
   async onload(): Promise<void> {
     await this.loadSettings();
+    setLanguage(this.settings.language);
 
     this.addSettingTab(new DailyTaskMoverSettingTab(this.app, this));
 
