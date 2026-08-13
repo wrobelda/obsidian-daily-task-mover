@@ -11,6 +11,7 @@ import {
 import {
   DailyTaskMoverSettings,
   DEFAULT_SETTINGS,
+  ClickAction,
 } from "./src/settings";
 import { DailyTaskMoverSettingTab } from "./src/settingsTab";
 import {
@@ -74,7 +75,7 @@ export default class DailyTaskMoverPlugin extends Plugin {
       this.registerEditorExtension(
         buildTaskIconField(
           (line, evt) => this.handleIconClick(line, evt),
-          () => this.isDailyNoteActive()
+          () => this.isDailyNoteActive() && this.hasActiveIconAction()
         )
       );
 
@@ -106,19 +107,55 @@ export default class DailyTaskMoverPlugin extends Plugin {
     return !!view?.file && !!getCurrentDailyDate(view.file);
   }
 
-  /** 编辑模式图标点击：校验日记后弹菜单。 */
+  /** 左键或右键至少配置了一个非 none 动作时，才显示行内图标。 */
+  private hasActiveIconAction(): boolean {
+    return (
+      this.settings.leftClickAction !== "none" ||
+      this.settings.rightClickAction !== "none"
+    );
+  }
+
+  /** 编辑模式图标点击：根据事件类型（左键/右键）取对应动作执行。 */
   private handleIconClick(line: number, evt: MouseEvent): void {
     const view = this.app.workspace.getActiveViewOfType(MarkdownView);
     if (!view?.file) return;
     if (!getCurrentDailyDate(view.file)) return;
-    this.openTaskMenu(view.file, line, evt);
+    const action =
+      evt.type === "contextmenu"
+        ? this.settings.rightClickAction
+        : this.settings.leftClickAction;
+    this.handleIconAction(action, view.file, line, evt);
   }
 
-  /** 弹出前一天/后一天菜单。 */
+  /** 按配置动作分发：popup 弹菜单，prev/next 直接移动，none 忽略。 */
+  private handleIconAction(
+    action: ClickAction,
+    file: TFile,
+    taskLine: number,
+    evt: MouseEvent
+  ): void {
+    switch (action) {
+      case "popup":
+        this.openTaskMenu(file, taskLine, evt);
+        break;
+      case "prev":
+        void this.doMove("prev", file, taskLine);
+        break;
+      case "next":
+        void this.doMove("next", file, taskLine);
+        break;
+      case "none":
+        break;
+    }
+  }
+
+  /** 弹出前一天/后一天菜单。菜单始终显示所有启用的方向，不随左右键绑定移除。 */
   private openTaskMenu(file: TFile, taskLine: number, evt: MouseEvent): void {
-    if (!this.settings.enablePreviousDay && !this.settings.enableNextDay) return;
+    const showPrev = this.settings.enablePreviousDay;
+    const showNext = this.settings.enableNextDay;
+    if (!showPrev && !showNext) return;
     const menu = new Menu();
-    if (this.settings.enablePreviousDay) {
+    if (showPrev) {
       menu.addItem((item) => {
         item.setTitle("移动到前一天");
         item.setIcon("arrow-left");
@@ -127,7 +164,7 @@ export default class DailyTaskMoverPlugin extends Plugin {
         });
       });
     }
-    if (this.settings.enableNextDay) {
+    if (showNext) {
       menu.addItem((item) => {
         item.setTitle("移动到后一天");
         item.setIcon("arrow-right");
@@ -203,6 +240,7 @@ export default class DailyTaskMoverPlugin extends Plugin {
     const tfile = this.app.vault.getAbstractFileByPath(ctx.sourcePath);
     if (!(tfile instanceof TFile)) return;
     if (!getCurrentDailyDate(tfile)) return;
+    if (!this.hasActiveIconAction()) return;
 
     const cache = this.app.metadataCache.getFileCache(tfile);
     if (!cache?.listItems) return;
@@ -240,7 +278,12 @@ export default class DailyTaskMoverPlugin extends Plugin {
       icon.addEventListener("click", (e: MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        this.openTaskMenu(tfile, taskLine, e);
+        this.handleIconClick(taskLine, e);
+      });
+      icon.addEventListener("contextmenu", (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.handleIconClick(taskLine, e);
       });
       // 行尾插入：嵌套 task 时插到子 ul 之前（task 文本末尾），否则 append 到 li 末尾
       const nestedUl = taskEl.querySelector(":scope > ul, :scope > ol");

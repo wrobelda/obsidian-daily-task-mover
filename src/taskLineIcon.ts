@@ -41,6 +41,11 @@ class TaskIconWidget extends WidgetType {
       e.stopPropagation();
       this.onClick(this.line, e);
     });
+    span.addEventListener("contextmenu", (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.onClick(this.line, e);
+    });
     return span;
   }
 
