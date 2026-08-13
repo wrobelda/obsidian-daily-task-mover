@@ -60,7 +60,10 @@ function buildDecorations(
   onClick: (line: number, evt: MouseEvent) => void
 ): DecorationSet {
   const decorations: Range<Decoration>[] = [];
+  // 光标所在行不显示图标：用户正在输入时隐藏，光标移走后恢复
+  const cursorLine = state.doc.lineAt(state.selection.main.head).number;
   for (let i = 1; i <= state.doc.lines; i++) {
+    if (i === cursorLine) continue;
     const line = state.doc.line(i);
     const match = TASK_LINE_REGEX.exec(line.text);
     if (match) {
@@ -91,7 +94,7 @@ export function buildTaskIconField(
       return isEnabled() ? buildDecorations(state, onClick) : Decoration.none;
     },
     update(value: DecorationSet, tr): DecorationSet {
-      if (tr.docChanged) {
+      if (tr.docChanged || tr.selection !== undefined) {
         return isEnabled()
           ? buildDecorations(tr.state, onClick)
           : Decoration.none;
