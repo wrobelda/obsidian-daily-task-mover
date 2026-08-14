@@ -84,6 +84,27 @@ export default class DailyTaskMoverPlugin extends Plugin {
       this.registerMarkdownPostProcessor((el, ctx) => {
         this.processReadingModeTasks(el, ctx);
       });
+
+      // 阅读模式：缓存更新后重新渲染，确保新添加的 task 能显示图标
+      // 场景：编辑模式添加 task → 切换阅读模式 → post processor 先于 cache 更新执行 → 图标缺失
+      this.registerEvent(
+        this.app.metadataCache.on("changed", (file) => {
+          const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+          if (
+            view &&
+            view.getMode() === "preview" &&
+            view.file === file &&
+            getCurrentDailyDate(file) &&
+            this.hasActiveIconAction()
+          ) {
+            window.setTimeout(() => {
+              if (view.getMode() === "preview") {
+                view.previewMode.rerender(true);
+              }
+            }, 0);
+          }
+        })
+      );
     }
   }
 
