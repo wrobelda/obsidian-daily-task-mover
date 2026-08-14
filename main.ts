@@ -291,6 +291,9 @@ export default class DailyTaskMoverPlugin extends Plugin {
       // 仅顶层 task 显示图标（parent < 0 表示无父列表项）
       if (taskItem.parent >= 0) continue;
       const taskLine = taskItem.position.start.line;
+      // 空 task（`- [ ] ` 后无内容）：阅读模式下 DOM 无文本内容，跳过
+      const taskText = taskEl.getText().trim();
+      if (taskText.length === 0) continue;
       if (taskEl.querySelector(":scope > .dtm-task-icon")) continue;
 
       const icon = createSpan();

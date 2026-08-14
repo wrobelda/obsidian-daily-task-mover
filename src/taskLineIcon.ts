@@ -16,6 +16,17 @@ import { t } from "./i18n";
 const TASK_LINE_REGEX = /^(\s*)[-*+]\s+\[[ xX]\]/;
 
 /**
+ * 判断 task 行是否为"空 task"：`- [ ] ` 后没有实际内容。
+ * 场景：输入一个 task 后顺手敲回车可能出现仅 `- [ ]` 的空行，
+ * 这类空 task 不显示移动图标（尚未填写内容，无需移动）。
+ */
+export function isBlankTaskLine(lineText: string): boolean {
+  const match = TASK_LINE_REGEX.exec(lineText);
+  if (!match) return false;
+  return lineText.slice(match[0].length).trim().length === 0;
+}
+
+/**
  * 行内 hover 图标的 widget：点击触发 onClick(line, evt)，
  * 由插件层弹出 Menu。ignoreEvent 返回 true 以阻止点击移动光标。
  */
@@ -69,6 +80,8 @@ function buildDecorations(
     if (match) {
       // 缩进 > 0 视为子项，不显示图标（仅顶层 task 可移动）
       if (match[1].length > 0) continue;
+      // 空 task（`- [ ] ` 后无内容）不显示图标
+      if (isBlankTaskLine(line.text)) continue;
       // cache 的 listItems 行号是 0-based，这里存 0-based line
       const widget = new TaskIconWidget(i - 1, onClick);
       // 行尾插入：side: 1 使 widget 位于行末换行前
