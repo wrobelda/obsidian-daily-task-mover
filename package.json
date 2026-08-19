@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-    "lint": "npx eslint src/**/*.ts main.ts",
-    "lint:fix": "npx eslint src/**/*.ts main.ts --fix"
+    "lint": "npx eslint \"src/**/*.ts\" main.ts",
+    "lint:fix": "npx eslint \"src/**/*.ts\" main.ts --fix"
   },
   "keywords": [
     "daily-notes",
