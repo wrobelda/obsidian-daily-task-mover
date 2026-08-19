@@ -43,7 +43,7 @@ class TaskIconWidget extends WidgetType {
   }
 
   toDOM(): HTMLElement {
-    const span = document.createElement("span");
+    const span = createSpan();
     span.className = "dtm-task-icon";
     span.setAttribute("aria-hidden", "true");
     span.setAttribute("title", t("title.moveTask"));
