@@ -3,7 +3,7 @@ import process from "process";
 import fs from "fs";
 import path from "path";
 import { execFileSync } from "child_process";
-import builtins from "builtin-modules";
+import { builtinModules as builtins } from "module";
 
 const prod = process.argv[2] === "production";
 
