@@ -5,7 +5,7 @@ import { t, setLanguage } from "./i18n";
 
 export class DailyTaskMoverSettingTab extends PluginSettingTab {
   plugin: DailyTaskMoverPlugin;
-
+  icon: string = 'arrow-left-right';
   constructor(app: App, plugin: DailyTaskMoverPlugin) {
     super(app, plugin);
     this.plugin = plugin;
