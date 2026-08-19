@@ -11,6 +11,88 @@ export class DailyTaskMoverSettingTab extends PluginSettingTab {
     this.plugin = plugin;
   }
 
+  // ── 1.13.0+: 声明式 API ──────────────────────────────────────────
+  // 框架在 1.13.0+ 优先调用此方法；返回非空数组时跳过 display()。
+  // control 类型自动绑定 plugin.settings[key]，自动保存 + refreshDomState。
+  getSettingDefinitions() {
+    const clickActionOptions: Record<ClickAction, string> = {
+      popup: t("clickAction.popup"),
+      prev: t("clickAction.prev"),
+      next: t("clickAction.next"),
+      none: t("clickAction.none"),
+    };
+    const languageOptions: Record<Language, string> = {
+      auto: t("language.auto"),
+      en: t("language.en"),
+      "zh-cn": t("language.zh-cn"),
+    };
+    // 仅当左键或右键动作为"弹出菜单"时，方向开关才有意义（作用于 popup 菜单项）。
+    const isPopupActive = () =>
+      this.plugin.settings.leftClickAction === "popup" ||
+      this.plugin.settings.rightClickAction === "popup";
+
+    return [
+      {
+        name: t("settings.language"),
+        desc: t("settings.languageDesc"),
+        render: (setting: Setting) => {
+          setting.addDropdown((dd) => {
+            for (const key of Object.keys(languageOptions) as Language[]) {
+              dd.addOption(key, languageOptions[key]);
+            }
+            dd.setValue(this.plugin.settings.language).onChange(
+              async (val) => {
+                this.plugin.settings.language = val as Language;
+                await this.plugin.saveSettings();
+                setLanguage(this.plugin.settings.language);
+                // update() is 1.13.0+; safe here because getSettingDefinitions() only runs on 1.13.0+
+                this["update"]();
+              }
+            );
+          });
+        },
+      },
+      {
+        name: t("settings.leftClickAction"),
+        desc: t("settings.leftClickActionDesc"),
+        control: {
+          type: "dropdown" as const,
+          key: "leftClickAction",
+          options: clickActionOptions,
+        },
+      },
+      {
+        name: t("settings.rightClickAction"),
+        desc: t("settings.rightClickActionDesc"),
+        control: {
+          type: "dropdown" as const,
+          key: "rightClickAction",
+          options: clickActionOptions,
+        },
+      },
+      {
+        name: t("settings.enablePreviousDay"),
+        desc: t("settings.enablePreviousDayDesc"),
+        control: {
+          type: "toggle" as const,
+          key: "enablePreviousDay",
+          disabled: () => !isPopupActive(),
+        },
+      },
+      {
+        name: t("settings.enableNextDay"),
+        desc: t("settings.enableNextDayDesc"),
+        control: {
+          type: "toggle" as const,
+          key: "enableNextDay",
+          disabled: () => !isPopupActive(),
+        },
+      },
+    ];
+  }
+
+  // ── < 1.13.0: 命令式 fallback ─────────────────────────────────────
+  // 框架在旧版本调用此方法；新版本在 getSettingDefinitions() 返回非空时跳过。
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
@@ -75,7 +157,7 @@ export class DailyTaskMoverSettingTab extends PluginSettingTab {
         );
       });
 
-    // 仅当左键或右键动作为“弹出菜单”时，方向开关才有意义（作用于 popup 菜单项）。
+    // 仅当左键或右键动作为"弹出菜单"时，方向开关才有意义（作用于 popup 菜单项）。
     const popupActive =
       this.plugin.settings.leftClickAction === "popup" ||
       this.plugin.settings.rightClickAction === "popup";
