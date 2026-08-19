@@ -138,16 +138,24 @@ export default class DailyTaskMoverPlugin extends Plugin {
     );
   }
 
-  /** 编辑模式图标点击：根据事件类型（左键/右键）取对应动作执行。 */
+  /** 编辑模式图标点击：从 active view 解析文件后分发动作。 */
   private handleIconClick(line: number, evt: MouseEvent): void {
     const view = this.app.workspace.getActiveViewOfType(MarkdownView);
     if (!view?.file) return;
-    if (!getCurrentDailyDate(view.file)) return;
+    this.dispatchIconClick(view.file, line, evt);
+  }
+
+  /**
+   * 图标点击分发：根据事件类型（左键/右键）取对应动作执行。
+   * file 由调用方传入（阅读模式用闭包中的 ctx 文件，避免分屏时 active view 错位）。
+   */
+  private dispatchIconClick(file: TFile, line: number, evt: MouseEvent): void {
+    if (!getCurrentDailyDate(file)) return;
     const action =
       evt.type === "contextmenu"
         ? this.settings.rightClickAction
         : this.settings.leftClickAction;
-    this.handleIconAction(action, view.file, line, evt);
+    this.handleIconAction(action, file, line, evt);
   }
 
   /** 按配置动作分发：popup 弹菜单，prev/next 直接移动，none 忽略。 */
@@ -315,12 +323,12 @@ export default class DailyTaskMoverPlugin extends Plugin {
       icon.addEventListener("click", (e: MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        this.handleIconClick(taskLine, e);
+        this.dispatchIconClick(tfile, taskLine, e);
       });
       icon.addEventListener("contextmenu", (e: MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        this.handleIconClick(taskLine, e);
+        this.dispatchIconClick(tfile, taskLine, e);
       });
       // 行尾插入：嵌套 task 时插到子 ul 之前（task 文本末尾），否则 append 到 li 末尾
       const nestedUl = taskEl.querySelector(":scope > ul, :scope > ol");
