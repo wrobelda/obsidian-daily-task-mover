@@ -1,5 +1,8 @@
 # Daily Task Mover
 
+[ English | [简体中文](https://github.com/moziar/obsidian-daily-task-mover/blob/main/docs/README_zh.md) ]
+
+
 Move a task (with all its rich-text sub-items) from the current daily note to the previous or next day's daily note, and re-position it under the same heading it came from in the source note.
 
 ## Features
