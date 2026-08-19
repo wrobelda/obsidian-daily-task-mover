@@ -6,6 +6,7 @@ import {
   Platform,
   Plugin,
   TFile,
+  debounce,
   setIcon,
 } from "obsidian";
 import {
@@ -26,6 +27,16 @@ import { t, setLanguage } from "./src/i18n";
 
 export default class DailyTaskMoverPlugin extends Plugin {
   declare settings: DailyTaskMoverSettings;
+
+  /**
+   * 防抖触发预览全量重渲染（trailing）。
+   * 分屏场景下 metadataCache 'changed' 会连续触发，避免每次都全量重渲染预览。
+   */
+  private rerenderPreview = debounce((view: MarkdownView) => {
+    if (view.getMode() === "preview" && view.previewMode) {
+      view.previewMode.rerender(true);
+    }
+  }, 300, true);
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -97,11 +108,7 @@ export default class DailyTaskMoverPlugin extends Plugin {
             getCurrentDailyDate(file) &&
             this.hasActiveIconAction()
           ) {
-            window.setTimeout(() => {
-              if (view.getMode() === "preview") {
-                view.previewMode.rerender(true);
-              }
-            }, 0);
+            this.rerenderPreview(view);
           }
         })
       );
@@ -110,6 +117,7 @@ export default class DailyTaskMoverPlugin extends Plugin {
 
   onunload(): void {
     // 所有事件通过 registerEvent / registerEditorExtension / registerMarkdownPostProcessor 自动清理
+    this.rerenderPreview.cancel();
   }
 
   async loadSettings(): Promise<void> {
