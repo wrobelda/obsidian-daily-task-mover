@@ -291,9 +291,20 @@ export default class DailyTaskMoverPlugin extends Plugin {
       // 仅顶层 task 显示图标（parent < 0 表示无父列表项）
       if (taskItem.parent >= 0) continue;
       const taskLine = taskItem.position.start.line;
-      // 空 task（`- [ ] ` 后无内容）：阅读模式下 DOM 无文本内容，跳过
-      const taskText = taskEl.getText().trim();
-      if (taskText.length === 0) continue;
+      // 空 task（`- [ ] ` 后无内容）不显示图标。
+      // 只统计嵌套子列表之前的直接文本（getText() 会包含子项文本，导致空父项误判）
+      let directText = "";
+      for (const node of Array.from(taskEl.childNodes)) {
+        // 跨窗口安全的 instanceof 检查（popout 窗口中 DOM 类来自不同 window）
+        if (
+          node.instanceOf(HTMLElement) &&
+          (node.tagName === "UL" || node.tagName === "OL")
+        ) {
+          break;
+        }
+        directText += node.textContent ?? "";
+      }
+      if (directText.trim().length === 0) continue;
       if (taskEl.querySelector(":scope > .dtm-task-icon")) continue;
 
       const icon = createSpan();
