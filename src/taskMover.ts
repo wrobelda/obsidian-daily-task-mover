@@ -9,19 +9,25 @@ interface MoveOpts {
   targetFile: TFile;
 }
 
-/** 追加文本到目标末尾，确保前面有空行分隔。 */
+/**
+ * 追加文本到目标末尾，确保前面有空行分隔。
+ * 保留原文件的末尾换行状态：原本没有结尾换行就不补（零副作用，
+ * 删除时依据当前末尾状态即可反推原状态，往返逐字节还原）。
+ */
 function appendToEnd(data: string, blockText: string): string {
   if (data.length === 0) {
     return blockText + "\n";
   }
+  const endsWithNewline = data.endsWith("\n");
   let result = data;
   if (!result.endsWith("\n")) result += "\n";
   if (!result.endsWith("\n\n")) result += "\n";
-  result += blockText + "\n";
+  result += blockText;
+  if (endsWithNewline) result += "\n";
   return result;
 }
 
-/** 在目标末尾追加新标题 + 任务块。 */
+/** 在目标末尾追加新标题 + 任务块。同样保留末尾换行状态（零副作用）。 */
 function appendNewHeading(
   data: string,
   heading: { level: number; text: string },
@@ -32,10 +38,12 @@ function appendNewHeading(
   if (data.length === 0) {
     return `${headingLine}\n\n${blockText}\n`;
   }
+  const endsWithNewline = data.endsWith("\n");
   let result = data;
   if (!result.endsWith("\n")) result += "\n";
   if (!result.endsWith("\n\n")) result += "\n";
-  result += `${headingLine}\n\n${blockText}\n`;
+  result += `${headingLine}\n\n${blockText}`;
+  if (endsWithNewline) result += "\n";
   return result;
 }
 
@@ -129,13 +137,24 @@ export async function moveTaskToNote(opts: MoveOpts): Promise<void> {
       const lines = data.split("\n");
       const before = lines.slice(0, blockRange.startLine);
       const after = lines.slice(blockRange.endLine + 1);
-      let result = before.concat(after).join("\n");
-      // 合并 3+ 连续换行为 2（避免空行堆叠）
-      result = result.replace(/\n{3,}/g, "\n\n");
-      if (result.length > 0 && !result.endsWith("\n")) {
-        result += "\n";
+
+      // 块是文件最后一段内容：连带清掉块前由插入逻辑补的分隔空行；
+      // 末尾换行保留文件当前状态——原本没有就不补（零副作用）
+      const isLastContent = after.every((line) => line.trim().length === 0);
+      if (isLastContent) {
+        const remaining = before.slice();
+        while (
+          remaining.length > 0 &&
+          remaining[remaining.length - 1].trim().length === 0
+        ) {
+          remaining.pop();
+        }
+        if (remaining.length === 0) return "";
+        return remaining.join("\n") + (data.endsWith("\n") ? "\n" : "");
       }
-      return result;
+
+      // 块在文件中间：直接拼接前后行，不改动其他空行与末尾换行状态
+      return before.concat(after).join("\n");
     });
 
     new Notice(t("notice.movedTo", { name: targetFile.basename }));
