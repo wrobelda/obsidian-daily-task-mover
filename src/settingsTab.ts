@@ -11,6 +11,14 @@ export class DailyTaskMoverSettingTab extends PluginSettingTab {
     this.plugin = plugin;
   }
 
+  /**
+   * 设置窗口关闭时刷新编辑器/预览图标：
+   * 左右键动作全为 none 时图标隐藏，恢复任一动作时图标重新显示。
+   */
+  hide(): void {
+    this.plugin.refreshTaskIcons();
+  }
+
   // ── 1.13.0+: 声明式 API ──────────────────────────────────────────
   // 框架在 1.13.0+ 优先调用此方法；返回非空数组时跳过 display()。
   // control 类型自动绑定 plugin.settings[key]，自动保存 + refreshDomState。

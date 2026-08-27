@@ -9,6 +9,8 @@ import {
   debounce,
   setIcon,
 } from "obsidian";
+import type { Editor } from "obsidian";
+import type { EditorView } from "@codemirror/view";
 import {
   DailyTaskMoverSettings,
   DEFAULT_SETTINGS,
@@ -22,7 +24,7 @@ import {
 } from "./src/taskCache";
 import { getCurrentDailyDate, getOrCreateDailyNote } from "./src/dailyNoteUtils";
 import { moveTaskToNote } from "./src/taskMover";
-import { buildTaskIconField } from "./src/taskLineIcon";
+import { buildTaskIconField, refreshTaskIconsEffect } from "./src/taskLineIcon";
 import { t, setLanguage } from "./src/i18n";
 
 export default class DailyTaskMoverPlugin extends Plugin {
@@ -144,6 +146,26 @@ export default class DailyTaskMoverPlugin extends Plugin {
       this.settings.leftClickAction !== "none" ||
       this.settings.rightClickAction !== "none"
     );
+  }
+
+  /**
+   * 设置变更后刷新所有 markdown 视图的图标（由 SettingTab.hide 触发）。
+   * 编辑模式：dispatch StateEffect 让 StateField 重算 decorations；
+   * 阅读模式：rerender 重跑 post processor（hasActiveIconAction 已变化）。
+   */
+  refreshTaskIcons(): void {
+    if (Platform.isMobile) return;
+    for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
+      const view = leaf.view;
+      if (!(view instanceof MarkdownView)) continue;
+      if (view.getMode() === "preview") {
+        view.previewMode?.rerender(true);
+      } else {
+        // editor.cm 未在官方类型中声明，运行时始终存在（CM6 编辑器）
+        const cm = (view.editor as Editor & { cm?: EditorView }).cm;
+        cm?.dispatch({ effects: refreshTaskIconsEffect.of(null) });
+      }
+    }
   }
 
   /** 编辑模式图标点击：从 active view 解析文件后分发动作。 */

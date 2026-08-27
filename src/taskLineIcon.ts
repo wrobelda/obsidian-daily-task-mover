@@ -1,4 +1,4 @@
-import { StateField, Range, EditorState } from "@codemirror/state";
+import { StateField, Range, EditorState, StateEffect } from "@codemirror/state";
 import {
   EditorView,
   WidgetType,
@@ -14,6 +14,12 @@ import { t } from "./i18n";
  * 编辑模式拿不到 metadataCache，用缩进近似判断；doMove 另用 cache.parent 兜底。
  */
 const TASK_LINE_REGEX = /^(\s*)[-*+]\s+\[[ xX]\]/;
+
+/**
+ * 外部状态变化（如点击动作设置变更）时，通知编辑器重算图标 decorations。
+ * dispatch 该 effect 会触发 StateField.update 重新执行 buildDecorations。
+ */
+export const refreshTaskIconsEffect = StateEffect.define<null>();
 
 /**
  * 判断 task 行是否为"空 task"：`- [ ] ` 后没有实际内容。
@@ -107,7 +113,11 @@ export function buildTaskIconField(
       return isEnabled() ? buildDecorations(state, onClick) : Decoration.none;
     },
     update(value: DecorationSet, tr): DecorationSet {
-      if (tr.docChanged || tr.selection !== undefined) {
+      if (
+        tr.docChanged ||
+        tr.selection !== undefined ||
+        tr.effects.some((e) => e.is(refreshTaskIconsEffect))
+      ) {
         return isEnabled()
           ? buildDecorations(tr.state, onClick)
           : Decoration.none;
