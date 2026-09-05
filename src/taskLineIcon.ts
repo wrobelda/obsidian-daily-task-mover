@@ -90,9 +90,12 @@ function buildDecorations(
       if (isBlankTaskLine(line.text)) continue;
       // cache 的 listItems 行号是 0-based，这里存 0-based line
       const widget = new TaskIconWidget(i - 1, onClick);
-      // 行尾插入：side: 1 使 widget 位于行末换行前
+      // 行尾插入。side 取 1e6 而非 1：行尾 wikilink 等其他插件的 widget 与本图标
+      // 位置相同（line.to），CM6 对同位置 widget 按 side 排序（大者靠后），
+      // side: 1 会因扩展注册顺序把本图标挤到链接图标之前，与 Reading Mode 的
+      // li.append(icon)（恒排最后）不一致。勿用 2e8，那是 CM6 内部 block widget 边界值。
       decorations.push(
-        Decoration.widget({ widget, side: 1 }).range(line.to)
+        Decoration.widget({ widget, side: 1e6 }).range(line.to)
       );
     }
   }
