@@ -1,4 +1,12 @@
 const en = {
+  "provider.active": "Currently using {provider}.",
+  "provider.disabledOption": "{provider} (disabled)",
+  "provider.unsupportedOption": "{provider} (unsupported version)",
+  "provider.selectedDisabled": "{provider} is disabled. Your selection is preserved. Enable the plugin and its note feature, or choose Automatic in Daily Task Mover settings.",
+  "provider.selectedUnsupported": "{provider} has an unsupported version. Your selection is preserved. Install a compatible version, or choose Automatic in Daily Task Mover settings.",
+  "provider.unavailableOption": "{provider} (unavailable)",
+  "provider.noneAvailable": "No note provider is available. Enable Journals 3.x, Daily Notes, or Periodic Notes with daily notes enabled.",
+  "provider.selectedUnavailable": "{provider} is not installed or is no longer supported by Daily Task Mover. Your selection is preserved. Install a supported provider, or choose Automatic in Daily Task Mover settings.",
   "provider.auto": "Automatic",
   "settings.noteProvider": "Note provider",
   "settings.noteProviderDesc": "Automatic uses Journals (3.0 or later) when available, otherwise Daily Notes. Choose a provider to override this; only one provider is used.",

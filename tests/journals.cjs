@@ -30,6 +30,7 @@ function setup({ journal = "Work", date = "2026-09-22", endDate = date, daily = 
   let lookups = 0;
   const note = journal ? { journal, date, endDate, file: source, path: source.path } : null;
   const api = {
+    apiVersion: 1,
     journalOf: async () => { lookups++; return note; },
     ensureNote: async (selector, target) => {
       calls.push([selector, target]);
@@ -146,7 +147,7 @@ test("Journals never falls back to Daily Notes for an unconnected note or unavai
     const h = setup({ journal: null, daily: "2026-09-22" });
     if (!enabled) delete h.app.plugins.plugins.journals;
     await h.move("next");
-    assert.deepEqual(h.calls, [["notice", "notice.notDailyNote"]]);
+    assert.deepEqual(h.calls, [["notice", enabled ? "notice.notDailyNote" : "provider.selectedUnavailable"]]);
   }
 });
 
@@ -250,7 +251,7 @@ test("automatic selection supports a new adapter without changing the resolver",
   delete h.app.plugins.plugins.journals;
   const identity = {};
   h.providers.unshift({
-    id: "third-provider", label: "Third provider",
+    id: "third-provider", label: "Third provider", getState: () => "available",
     connect: () => ({ identity, resolve: () => ({
       date: moment("2026-06-01"), endDate: moment("2026-06-30"),
       getOrCreate: async (date) => { h.calls.push(["third", date.format("YYYY-MM-DD")]); return h.destination; },
@@ -263,4 +264,64 @@ test("automatic selection supports a new adapter without changing the resolver",
   h.calls.length = 0;
   await h.move("next");
   assert.deepEqual(h.calls[0], ["daily", "2020-01-02"]);
+});
+
+
+test("an explicit provider selection survives disable and re-enable without falling back", async () => {
+  const h = setup({ daily: "2020-01-01" });
+  const context = await h.provider.resolve(h.source);
+  delete h.app.plugins.plugins.journals;
+  assert.deepEqual(h.provider.getStatus(), { available: false, label: "Journals", selection: "journals", state: "unavailable", message: "provider.selectedUnavailable" });
+  assert.equal(h.provider.getDate(h.source), null);
+  await assert.rejects(h.provider.resolve(h.source), /provider.selectedUnavailable/);
+  await assert.rejects(context.getOrCreate(moment()), /providerUnavailable/);
+  assert.deepEqual(h.calls, []);
+  h.app.plugins.plugins.journals = { api: h.api };
+  assert.deepEqual(h.provider.getStatus(), { available: true, label: "Journals", selection: "journals", state: "available", message: "provider.active" });
+  await h.move("next");
+  assert.deepEqual(h.calls[0], ["Work", "2026-09-23"]);
+});
+
+test("an incompatible Journals API is unavailable, and automatic mode can use another provider", async () => {
+  const h = setup({ daily: "2020-01-01" });
+  h.api.apiVersion = 2;
+  await assert.rejects(h.provider.resolve(h.source), /provider.selectedUnsupported/);
+  h.select("auto");
+  await h.move("next");
+  assert.deepEqual(h.calls[0], ["daily", "2020-01-02"]);
+});
+
+test("automatic selection without any available provider reports a dependency problem", async () => {
+  const h = setup();
+  delete h.app.plugins.plugins.journals;
+  h.select("auto");
+  await assert.rejects(h.provider.resolve(h.source), /provider.noneAvailable/);
+});
+
+
+test("Journals distinguishes absent, disabled, incompatible and ready installations", async () => {
+  const h = setup();
+  const adapter = h.providers[0];
+  delete h.app.plugins.plugins.journals;
+  assert.equal(adapter.getState(h.app), "unavailable");
+  h.app.plugins.manifests = { journals: { version: "3.5.1" } };
+  assert.equal(adapter.getState(h.app), "disabled");
+  assert.equal(h.provider.getStatus().message, "provider.selectedDisabled");
+  await assert.rejects(h.provider.resolve(h.source), /provider.selectedDisabled/);
+  h.app.plugins.plugins.journals = {};
+  assert.equal(adapter.getState(h.app), "unsupported");
+  assert.equal(h.provider.getStatus().message, "provider.selectedUnsupported");
+  h.app.plugins.plugins.journals.api = h.api;
+  assert.equal(adapter.getState(h.app), "available");
+  await h.move("next");
+  assert.deepEqual(h.calls[0], ["Work", "2026-09-23"]);
+});
+
+test("the bundled Daily Notes capability is disabled rather than unavailable", () => {
+  const h = setup();
+  h.select("daily-notes");
+  assert.equal(h.providers[1].getState(h.app), "disabled");
+  assert.equal(h.provider.getStatus().message, "provider.selectedDisabled");
+  const enabled = setup({ daily: "2026-09-22" });
+  assert.equal(enabled.providers[1].getState(enabled.app), "available");
 });

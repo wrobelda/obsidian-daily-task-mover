@@ -31,6 +31,7 @@ import { t, setLanguage } from "./src/i18n";
 export default class DailyTaskMoverPlugin extends Plugin {
   declare settings: DailyTaskMoverSettings;
   private dailyNotes!: DailyNoteProvider;
+  private warnedUnavailableProvider: string | null = null;
   private refreshDailyNotes = debounce(() => this.refreshTaskIcons(), 50, true);
 
   /**
@@ -55,7 +56,14 @@ export default class DailyTaskMoverPlugin extends Plugin {
       this.dailyNotes.dispose();
       this.refreshDailyNotes.cancel();
     });
-    this.app.workspace.onLayoutReady(() => this.refreshDailyNotes());
+    this.app.workspace.onLayoutReady(() => {
+      const status = this.getNoteProviderStatus();
+      if (!status.available && status.selection !== "auto") {
+        this.warnedUnavailableProvider = status.selection;
+        new Notice(status.message);
+      }
+      this.refreshDailyNotes();
+    });
     this.registerEvent(this.app.workspace.on("layout-change", () => this.refreshDailyNotes()));
     this.registerEvent(this.app.workspace.on("active-leaf-change", () => this.refreshDailyNotes()));
     this.registerEvent(this.app.metadataCache.on("changed", (file) => {
@@ -181,6 +189,13 @@ export default class DailyTaskMoverPlugin extends Plugin {
    * 阅读模式：rerender 重跑 post processor（hasActiveIconAction 已变化）。
    */
   refreshTaskIcons(): void {
+    const status = this.getNoteProviderStatus();
+    if (status.available || status.selection === "auto") {
+      this.warnedUnavailableProvider = null;
+    } else if (this.app.workspace.layoutReady && this.warnedUnavailableProvider !== status.selection) {
+      this.warnedUnavailableProvider = status.selection;
+      new Notice(status.message);
+    }
     // Warm asynchronous lookups on mobile too, before command availability is checked.
     for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
       const view = leaf.view;
@@ -198,6 +213,10 @@ export default class DailyTaskMoverPlugin extends Plugin {
         cm?.dispatch({ effects: refreshTaskIconsEffect.of(null) });
       }
     }
+  }
+
+  getNoteProviderStatus() {
+    return this.dailyNotes.getStatus();
   }
 
   /** 编辑模式图标点击：从 active view 解析文件后分发动作。 */

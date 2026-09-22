@@ -36,6 +36,21 @@ export class DailyNoteProvider {
     }
   }
 
+  getStatus() {
+    const session = this.currentSession();
+    const selection = this.selectedProvider();
+    const id = this.providerId ?? selection;
+    const provider = this.providers.find((provider) => provider.id === id);
+    const label = provider?.label ?? id;
+    const state = session ? "available" : provider?.getState(this.app) ?? "unavailable";
+    const message = session ? t("provider.active", { provider: label })
+      : selection === "auto" ? t("provider.noneAvailable")
+        : state === "disabled" ? t("provider.selectedDisabled", { provider: label })
+          : state === "unsupported" ? t("provider.selectedUnsupported", { provider: label })
+            : t("provider.selectedUnavailable", { provider: label });
+    return { available: session !== null, label, selection, state, message };
+  }
+
   private currentSession(): NoteProviderSession | null {
     if (this.disposed) return null;
     const selected = this.selectedProvider();
@@ -93,7 +108,10 @@ export class DailyNoteProvider {
   /** Resolve afresh before moving; the UI cache never selects a destination. */
   async resolve(file: TFile): Promise<NoteContext | null> {
     const session = this.currentSession();
-    if (!session) return null;
+    if (!session) {
+      const status = this.getStatus();
+      throw new Error(status.message);
+    }
     const context = await session.resolve(file);
     if (!context || this.currentSession() !== session) return null;
     return {

@@ -31,7 +31,7 @@ Daily Notes moves by one day; Journals moves by one period in the source journal
 
 ## Settings
 
-- **Note provider**: choose `Automatic` (default), `Daily notes`, or `Journals`. An explicitly selected provider must be enabled; it does not fall back to another provider.
+- **Note provider**: choose `Automatic` (default), `Daily / Periodic notes`, or `Journals`. The dropdown marks providers as unavailable (not installed), disabled, or unsupported version; only compatible, enabled providers can be selected. If a saved selection becomes unavailable, that selection is preserved and task moves stop; enable the provider again or choose Automatic. Explicit selections never fall back to another provider.
 
 - **Left click action** / **Right click action**: choose what happens when clicking the inline task icon — `Popup menu`, `Move to previous period`, `Move to next period`, or `No action`
 - **Enable previous period** / **Enable next period**: control whether the corresponding options appear in the popup menu. These are editable only when the left or right click action is set to `Popup menu`

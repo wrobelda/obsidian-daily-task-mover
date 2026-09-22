@@ -6,7 +6,11 @@ const identity = {};
 
 export const dailyNotesProvider = {
   id: "daily-notes",
-  label: "Daily notes",
+  label: "Daily / Periodic notes",
+  getState() {
+    // Core Daily Notes is bundled with Obsidian, so this capability is never missing.
+    return appHasDailyNotesPluginLoaded() ? "available" : "disabled";
+  },
   connect() {
     if (!appHasDailyNotesPluginLoaded()) return null;
     return {

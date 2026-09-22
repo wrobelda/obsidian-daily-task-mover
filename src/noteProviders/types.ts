@@ -13,9 +13,12 @@ export interface NoteProviderSession {
   subscribe?(changed: () => void): () => void;
 }
 
+export type NoteProviderState = "available" | "unavailable" | "disabled" | "unsupported";
+
 export interface NoteProviderDefinition {
   id: string;
   label: string;
+  getState(app: App): NoteProviderState;
   connect(app: App): NoteProviderSession | null;
 }
 
@@ -23,4 +26,3 @@ export function isNoteCreationCancelled(error: unknown): boolean {
   return typeof error === "object" && error !== null &&
     "code" in error && error.code === "aborted";
 }
-

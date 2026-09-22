@@ -1,15 +1,33 @@
-import { moment } from "obsidian";
+import { App, moment } from "obsidian";
 import { getJournalsApi } from "obsidian-journals-api";
 import { isNoteCreationCancelled } from "./types";
 import { t } from "../i18n";
-import type { NoteProviderDefinition } from "./types";
+import type { NoteProviderDefinition, NoteProviderState } from "./types";
+
+function getState(app: App): NoteProviderState {
+  // The API locator cannot distinguish an uninstalled plugin from a disabled one.
+  // Keep access to Obsidian's internal plugin inventory confined to this adapter.
+  const manager = (app as App & {
+    plugins?: {
+      manifests?: Record<string, unknown>;
+      plugins?: Record<string, unknown>;
+    };
+  }).plugins;
+  const loaded = manager?.plugins?.journals;
+  if (!loaded && !manager?.manifests?.journals) return "unavailable";
+  if (!loaded) return "disabled";
+  const api = getJournalsApi(app);
+  return api?.apiVersion === 1 ? "available" : "unsupported";
+}
 
 export const journalsProvider = {
   id: "journals",
   label: "Journals",
+  getState,
   connect(app) {
+    if (getState(app) !== "available") return null;
     const api = getJournalsApi(app);
-    if (!api) return null;
+    if (!api || api.apiVersion !== 1) return null;
     return {
       identity: api,
       subscribe(changed) {

@@ -1,4 +1,12 @@
 const zhCN = {
+  "provider.active": "当前使用 {provider}。",
+  "provider.disabledOption": "{provider}（已禁用）",
+  "provider.unsupportedOption": "{provider}（版本不受支持）",
+  "provider.selectedDisabled": "{provider} 已禁用，已保留您的选择。请启用插件及其笔记功能，或在 Daily Task Mover 设置中选择“自动”。",
+  "provider.selectedUnsupported": "{provider} 的版本不受支持，已保留您的选择。请安装兼容版本，或在 Daily Task Mover 设置中选择“自动”。",
+  "provider.unavailableOption": "{provider}（不可用）",
+  "provider.noneAvailable": "没有可用的笔记提供插件。请启用 Journals 3.x、Daily Notes，或启用 Periodic Notes 的每日笔记功能。",
+  "provider.selectedUnavailable": "{provider} 未安装或已不受 Daily Task Mover 支持，已保留您的选择。请安装受支持的插件，或在设置中选择“自动”。",
   "provider.auto": "自动",
   "settings.noteProvider": "笔记提供插件",
   "settings.noteProviderDesc": "自动模式优先使用 Journals（3.0 或更高版本），否则使用 Daily Notes。也可手动指定插件；始终只使用一个插件。",

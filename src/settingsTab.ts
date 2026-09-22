@@ -26,12 +26,29 @@ export class DailyTaskMoverSettingTab extends PluginSettingTab {
       for (const provider of noteProviders) {
         dropdown.addOption(provider.id, provider.label);
       }
+      const refreshAvailability = () => {
+        for (const provider of noteProviders) {
+          const option = Array.from(dropdown.selectEl.options).find((option) => option.value === provider.id);
+          if (!option) continue;
+          const state = provider.getState(this.app);
+          option.disabled = state !== "available";
+          option.textContent = state === "available" ? provider.label
+            : t(state === "disabled" ? "provider.disabledOption"
+              : state === "unsupported" ? "provider.unsupportedOption"
+                : "provider.unavailableOption", { provider: provider.label });
+        }
+        const status = this.plugin.getNoteProviderStatus();
+        setting.setDesc(`${t("settings.noteProviderDesc")} ${status.message}`);
+      };
+      refreshAvailability();
+      dropdown.selectEl.addEventListener("focus", refreshAvailability);
       dropdown
         .setValue(this.plugin.settings.noteProvider)
         .onChange(async (value) => {
           this.plugin.settings.noteProvider = value;
           await this.plugin.saveSettings();
           this.plugin.refreshTaskIcons();
+          refreshAvailability();
         });
     });
   }
