@@ -4,7 +4,7 @@ import type { NoteProviderDefinition } from "./types";
 
 const identity = {};
 
-export const dailyNotesProvider = {
+export const obsidianDailyNotesProvider = {
   id: "daily-notes",
   label: "Daily / Periodic notes",
   getState() {

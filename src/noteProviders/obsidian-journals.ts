@@ -20,7 +20,7 @@ function getState(app: App): NoteProviderState {
   return api?.apiVersion === 1 ? "available" : "unsupported";
 }
 
-export const journalsProvider = {
+export const obsidianJournalsProvider = {
   id: "journals",
   label: "Journals",
   getState,

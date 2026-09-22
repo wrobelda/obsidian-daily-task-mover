@@ -48,13 +48,13 @@ function setup({ journal = "Work", date = "2026-09-22", endDate = date, daily = 
     debounce: (fn) => Object.assign(fn, { cancel() {} }),
   };
   const providerTypes = load("src/noteProviders/types.ts", {});
-  const journalsModule = load("src/noteProviders/journals.ts", {
+  const journalsModule = load("src/noteProviders/obsidian-journals.ts", {
     obsidian,
     "obsidian-journals-api": { getJournalsApi: () => app.plugins.plugins.journals?.api ?? null },
     "../i18n": { t: (key) => key },
     "./types": providerTypes,
   });
-  const dailyModule = load("src/noteProviders/dailyNotes.ts", {
+  const dailyModule = load("src/noteProviders/obsidian-daily-notes.ts", {
     "obsidian-daily-notes-interface": { appHasDailyNotesPluginLoaded: () => !!daily },
     "../dailyNoteUtils": {
       getCurrentDailyDate: () => daily ? moment(daily) : null,
@@ -64,7 +64,7 @@ function setup({ journal = "Work", date = "2026-09-22", endDate = date, daily = 
       },
     },
   });
-  const providers = [journalsModule.journalsProvider, dailyModule.dailyNotesProvider];
+  const providers = [journalsModule.obsidianJournalsProvider, dailyModule.obsidianDailyNotesProvider];
   const providerModule = load("src/dailyNoteProvider.ts", {
     "./noteProviders": { noteProviders: providers },
     "./i18n": { t: (key) => key },
